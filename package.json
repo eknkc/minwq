@@ -1,0 +1,27 @@
+{
+  "name": "minwq",
+  "version": "1.0.0",
+  "description": "Minimalist work queue backed by Redis",
+  "main": "index.js",
+  "scripts": {
+    "test": "./node_modules/.bin/mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:eknkc/minwq.git"
+  },
+  "keywords": [
+    "redis",
+    "message",
+    "queue",
+    "work"
+  ],
+  "author": "Ekin Koc",
+  "license": "MIT",
+  "dependencies": {
+    "redis": "~0.8.4"
+  },
+  "devDependencies": {
+    "mocha": "~1.11.0"
+  }
+}
