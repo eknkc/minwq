@@ -37,4 +37,34 @@ describe("minwq", function() {
       });
     });
   });
+
+  it("should check for unique tokens", function (next) {
+    q.push({ queue: "test3", data: { x: 1, y: 2 }, unique: "x" }, function (err, job) {
+      if (err) return next(err);
+      assert.notEqual(job, null);
+
+      q.push({ queue: "test3", data: { x: 2, y: 3 }, unique: "x" }, function (err, job) {
+        if (err) return next(err);
+        assert.equal(job, null);
+
+        q.pop({ queue: "test3" }, function (err, job) {
+          if (err) return next(err);
+
+          job.remove(function (err) {
+            if (err) return next(err);
+
+            q.push({ queue: "test3", data: { x: 1, y: 2 }, unique: "x" }, function (err, job) {
+              if (err) return next(err);
+              assert.notEqual(job, null);
+
+              q.pop({ queue: "test3" }, function (err, job) {
+                if (err) return next(err);
+                job.remove(next);
+              });
+            });
+          })
+        });
+      });
+    });
+  });
 });
