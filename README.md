@@ -1,5 +1,5 @@
 # minwq
-Minimalistic Node.JS Work Queue, backed by Redis.
+Minimalistic Node.JS Work Queue, backed by Redis. (>=2.6.* redis required with Lua support)
 
 	npm install minwq
 
