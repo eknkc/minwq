@@ -175,6 +175,36 @@ describe("minwq", function() {
     });
   });
 
+  it('should delay queue items', function (next) {
+    this.timeout(0);
+    q.push({ queue: "test4", data: { x: 1, y: 2 }, delay: 12 }, function (err, job) {
+      should.not.exist(err);
+      should.exist(job);
+
+      q.push({ queue: "test4", data: { x: 3, y: 4 } }, function (err, job) {
+        should.not.exist(err);
+        should.exist(job);
+
+        q.pop({ queue: "test4" }, function (err, job) {
+          should.not.exist(err);
+          should.exist(job);
+          job.data.x.should.be.equal(3);
+          job.data.y.should.be.equal(4);
+
+          setTimeout(function () {
+            q.pop({ queue: "test4" }, function (err, job) {
+              should.not.exist(err);
+              should.exist(job);
+              job.data.x.should.be.equal(1);
+              job.data.y.should.be.equal(2);
+              next();
+            });
+          }, 13000);
+        });
+      });
+    });
+  });
+
   it('should clear the given queue', function (next) {
     q.push({ queue: "test4", data: { x: 1, y: 2 } }, function (err, job) {
       should.not.exist(err);
