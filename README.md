@@ -11,11 +11,14 @@ Minimalistic Node.JS Work Queue, backed by Redis. (>=2.6.* redis required with L
 
 	// Optional
 	// You can provide a queue suffix for all jobs for namespacing purposes.
-	// Also, you can provide a custom redis client in case you need to connect to a redis server with authentication or such
 	var store = new minwq({
 		prefix: "myapp",
-		client: redis.createClient(...)
 	});
+
+	// If you need to provide custom redis clients (due to authentication or because you just want to), you can override createClient function of store;
+	store.createClient = function() {
+		return redis.createClient(..whatever);
+	}
 
 #### Pushing - Push a new job to a queue
 
