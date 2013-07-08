@@ -19,7 +19,8 @@
   "author": "Ekin Koc",
   "license": "MIT",
   "dependencies": {
-    "redis": "~0.8.4"
+    "redis": "~0.8.4",
+    "node-uuid": "*"
   },
   "devDependencies": {
     "mocha": "~1.11.0",
