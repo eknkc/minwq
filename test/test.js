@@ -6,7 +6,7 @@ var mwq = require("../")
 describe("minwq", function() {
   var redisSettings = {
     port: '6379',
-    host: '5.9.69.137'
+    host: '127.0.0.1'
   };
   var redisClient = redis.createClient(redisSettings.port, redisSettings.host);
   var q = new mwq({
