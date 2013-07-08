@@ -26,4 +26,6 @@ else
   redis.call("RPUSH", queue, cmsgpack.pack(data))
 end
 
+redis.call("PUBLISH", queue, data.id)
+
 return data.id
