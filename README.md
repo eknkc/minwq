@@ -55,9 +55,6 @@ No TTR means the hob will be removed from queue immediately when the pop functio
 
 		// after finishing the job, you need to remove it explicitly from the queue:
 		job.remove(callback);
-
-		// or, you can push it back to the queue
-		job.pushback(callback)
 	});
 
 ##Polling

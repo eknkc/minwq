@@ -1,45 +1,29 @@
 local queue = KEYS[1]
+local data = cjson.decode(ARGV[1])
+local meta = cjson.decode(ARGV[2])
 
-local data = ARGV[1]
-local uniquehash = ARGV[2]
-local priority = tonumber(ARGV[3])
-local delay = tonumber(ARGV[4])
-local ttr = tonumber(ARGV[5])
+if data["unique"] then
+  local items = redis.call('LRANGE', queue, 0, -1)
 
-if not queue then
-   return redis.error_reply("Queue not specified.")
-end
-
-if not data then
-   return redis.error_reply("Data not specified.")
-end
-
-local id = redis.call("INCR", queue .. ":id")
-local key = queue .. ":job:" .. id
-
-if uniquehash ~= "" then
-  if redis.call("SADD", queue .. ":unique", uniquehash) == 0 then
-    return nil
-  else
-    redis.call("HSET", key, "uniquehash", uniquehash)
+  for i=1, #items do
+    local item = cmsgpack.unpack(items[i])
+    if item["unique"] == data["unique"] then
+      return nil
+    end
   end
 end
 
-redis.call("HSET", key, "data", data)
-
-if ttr > 0 then
-  redis.call("HSET", key, "ttr", ttr)
-end
-
-if delay > 0 then
-  redis.call("LPUSH", queue .. ":delayed", key)
-  redis.call("SETEX", key .. ":delayed", delay, 1)
+if data["delay"] then
+  data["delayttl"] = data["delay"] + meta["date"]
+  data["state"] = "delayed"
 else
-  if priority > 0 then
-    redis.call("RPUSH", queue .. ":waiting", key)
-  else
-    redis.call("LPUSH", queue .. ":waiting", key)
-  end
+  data["state"] = "waiting"
 end
 
-return key
+if data["priority"] and data["priority"] > 0 then
+  redis.call("LPUSH", queue, cmsgpack.pack(data))
+else
+  redis.call("RPUSH", queue, cmsgpack.pack(data))
+end
+
+return data.id

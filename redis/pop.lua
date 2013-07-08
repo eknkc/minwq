@@ -1,44 +1,35 @@
 local queue = KEYS[1]
+local meta = cjson.decode(ARGV[1])
 
-if not queue then
-   return redis.error_reply("Queue not specified.")
-end
+local llen = redis.call("LLEN", queue)
 
-local delaycheck = redis.call("EXISTS", queue .. ":delaycheck")
+local i = 1
+while i <= llen do
+  local data = redis.call("LPOP", queue)
+  local item = cmsgpack.unpack(data)
 
-if delaycheck == 0 then
-  redis.call("SETEX", queue .. ":delaycheck", 10, 1)
-  local items = redis.call('LRANGE', queue .. ":delayed", 0, -1)
+  if item["state"] == "waiting" then
+    if item["ttr"] then
+      item["state"] = "delayed"
+      item["delayttl"] = meta["date"] + item["ttr"]
 
-  for i=1, #items do
-    local item = items[i]
+      redis.call("RPUSH", queue, cmsgpack.pack(item))
+    else
+      item["state"] = "active"
+    end
 
-    if redis.call("EXISTS", item .. ":delayed") == 0 then
-      redis.call("LREM", queue .. ":delayed", 0, item)
-      redis.call("LPUSH", queue .. ":waiting", item)
+    return cjson.encode(item)
+  elseif item["state"] == "delayed" then
+    if item["delayttl"] < meta["date"] then
+      item["state"] = "waiting"
+      redis.call("LPUSH", queue, cmsgpack.pack(item))
+      i = i - 1
+    else
+      redis.call("RPUSH", queue, cmsgpack.pack(item))
     end
   end
+
+  i = i + 1
 end
 
-local key = redis.call("RPOP", queue .. ":waiting")
-
-if not key then
-  return nil
-end
-
-local ttr = tonumber(redis.call("HGET", key, "ttr"))
-local uniquehash = redis.call("HGET", key, "uniquehash")
-local data = redis.call("HGET", key, "data")
-
-if ttr and ttr > 0 then
-  redis.call("LPUSH", queue .. ":delayed", key)
-  redis.call("SETEX", key .. ":delayed", ttr, 1)
-else
-  redis.call("DEL", key)
-
-  if uniquehash and uniquehash ~= "" then
-    redis.call("SREM", queue .. ":unique", uniquehash)
-  end
-end
-
-return { key, data, ttr }
+return nil

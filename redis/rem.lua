@@ -1,16 +1,15 @@
 local queue = KEYS[1]
-local key = KEYS[2]
+local data = cjson.decode(ARGV[1])
 
-if not key then
-   return redis.error_reply("Key not specified.")
+local llen = redis.call("LLEN", queue)
+
+for i=1, llen do
+  local data = redis.call('LINDEX', queue, i - 1)
+  local item = cmsgpack.unpack(data)
+
+  if item["id"] == data["id"] then
+    return redis.call('LREM', queue, data)
+  end
 end
 
-local uniquehash = redis.call("HGET", key, "uniquehash")
-
-if uniquehash and uniquehash ~= "" then
-  redis.call("SREM", queue .. ":unique", uniquehash)
-end
-
-redis.call("LREM", queue .. ":running", 0, key)
-redis.call("LREM", queue .. ":waiting", 0, key)
-return redis.call("DEL", key)
+return 0
