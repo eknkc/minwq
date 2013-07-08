@@ -1,32 +1,36 @@
 # minwq
 Minimalistic Node.JS Work Queue, backed by Redis. (>=2.6.* redis required with Lua support)
 
-	npm install minwq
+    npm install minwq
 
-##usage
+##Usage
 	var minwq = require("minwq")
 
 	// Create a new store
-	var store= minwq();
+	var store= new minwq([options]);
 
 	// Optional
 	// You can provide a queue suffix for all jobs for namespacing purposes.
 	// Also, you can provide a custom redis client in case you need to connect to a redis server with authentication or such
-	var store = minwq({
+	var store = new minwq({
 		prefix: "myapp",
 		client: redis.createClient(...)
 	});
 
-	// Push a new job to a queue
-	// queue [required] - Name of the queue
-	// data [required] - Job payload
-	// delay [optional] - Delay job execution (in seconds)
-	// unique [optional] - If provided, only a single living job can have the unqiue token, additional push requests will fail.
-	// priority [optional] - Integer, denoting the job priority. Higher gets executed first.
-	// ttr [optional] - Job retry delay (in seconds).
-	// If a job takes more than ttr seconds to complete, it will be requeued.
-	// No TTR means the hob will be removed from queue immediately when the pop function gets called.
-	// callback(err, jobid) - Gets called when the job is created
+#### Pushing - Push a new job to a queue
+
+* `queue` [required] - Name of the queue
+* `data` [required] - Job payload
+* `delay` [optional] - Delay job execution (in seconds)
+* `unique` [optional] - If provided, only a single living job can have the unqiue token, additional push requests will fail.
+* `priority` [optional] - Integer, denoting the job priority. Higher gets executed first.
+* `ttr` [optional] - Job retry delay (in seconds).
+* `callback(err, jobid)` - Gets called when the job is created
+* **
+
+If a job takes more than `ttr` seconds to complete, it will be requeued.
+No TTR means the hob will be removed from queue immediately when the pop function gets called.
+
 	store.push({
 		queue: "email",
 		data: {
@@ -41,7 +45,8 @@ Minimalistic Node.JS Work Queue, backed by Redis. (>=2.6.* redis required with L
 	}, callback);
 
 
-	// Pop a job from queue
+#### Poping - Pop a job from queue
+
 	store.pop({
 		queue: "email"
 	}, function(err, job) {
@@ -54,6 +59,54 @@ Minimalistic Node.JS Work Queue, backed by Redis. (>=2.6.* redis required with L
 		// or, you can push it back to the queue
 		job.pushback(callback)
 	});
+
+##Polling
+#### Job Consumer and empty queue callback
+
+	// Called for every poll iteration
+	var consumer = function (payload, [args,] next) {
+		// `payload` is the job message
+		// `this` keyword is determined by the `bind` option
+		// `args` determined by the `args`option
+		// `next(err)` is the acknowledgment to queue
+	}
+
+	// Called when the queue is emptied
+	var done = function () {}
+
+#### Making the Subscription
+
+* `channel` [required] - Name of the queue to be subscribed
+* `type` [required] - Polling algorithm, TYPE.LINEAR, TYPE.ADAPTIVE
+* `value` [required] - Poll iteration interval (in seconds)
+* `handler` [required] - Job consumer function
+* `bind` [optional] - `handler` bind
+* `done` [optional] - Queue emptied callback
+* `args` [optional] - Additional arguments to the `handler`
+* **
+
+	var subscriptionId = store.poll.subscribe({
+		channel: 'email',
+		type: store.poll.TYPE.INTERVAL,
+		value: 5,
+		handler: consumer,
+		bind: { test: 'a' },
+		done: done,
+		args: [10, 20]
+	});
+
+#### Manipulating the Subscription
+
+	// Start the polling for the given `subscriptionId`
+	store.poll.start(subscriptionId);
+
+	// Stop the polling for the given `subscriptionId`
+	// Do not delete the subscription
+	store.poll.stop(subscriptionId);
+
+	// Stop the polling for the given `subscriptionId`
+	// Delete the subscription
+	store.poll.unsubscribe(subscriptionId);
 
 ##license
 MIT
