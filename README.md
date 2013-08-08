@@ -60,53 +60,5 @@ No TTR means the hob will be removed from queue immediately when the pop functio
 		job.remove(callback);
 	});
 
-##Polling
-#### Job Consumer and empty queue callback
-
-	// Called for every poll iteration
-	var consumer = function (payload, [args,] next) {
-		// `payload` is the job message
-		// `this` keyword is determined by the `bind` option
-		// `args` determined by the `args`option
-		// `next(err)` is the acknowledgment to queue
-	}
-
-	// Called when the queue is emptied
-	var done = function () {}
-
-#### Making the Subscription
-
-* `channel` [required] - Name of the queue to be subscribed
-* `type` [required] - Polling algorithm, TYPE.LINEAR, TYPE.ADAPTIVE
-* `value` [required] - Poll iteration interval (in seconds)
-* `handler` [required] - Job consumer function
-* `bind` [optional] - `handler` bind
-* `done` [optional] - Queue emptied callback
-* `args` [optional] - Additional arguments to the `handler`
-* **
-
-	var subscriptionId = store.poll.subscribe({
-		channel: 'email',
-		type: store.poll.TYPE.INTERVAL,
-		value: 5,
-		handler: consumer,
-		bind: { test: 'a' },
-		done: done,
-		args: [10, 20]
-	});
-
-#### Manipulating the Subscription
-
-	// Start the polling for the given `subscriptionId`
-	store.poll.start(subscriptionId);
-
-	// Stop the polling for the given `subscriptionId`
-	// Do not delete the subscription
-	store.poll.stop(subscriptionId);
-
-	// Stop the polling for the given `subscriptionId`
-	// Delete the subscription
-	store.poll.unsubscribe(subscriptionId);
-
 ##license
 MIT

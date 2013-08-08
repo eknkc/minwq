@@ -1,7 +1,8 @@
 var mwq = require("../")
   , should = require('should')
   , redis = require('redis')
-  , async = require('async');
+  , async = require('async')
+  , stream = require("stream")
 
 describe("minwq", function() {
   var redisSettings = {
@@ -162,10 +163,9 @@ describe("minwq", function() {
     });
   });
 
-  /*
   it('should delay queue items', function (next) {
     this.timeout(0);
-    q.push({ queue: "test4", data: { x: 1, y: 2 }, delay: 12 }, function (err, job) {
+    q.push({ queue: "test4", data: { x: 1, y: 2 }, delay: 200 }, function (err, job) {
       should.not.exist(err);
       should.exist(job);
 
@@ -182,17 +182,23 @@ describe("minwq", function() {
           setTimeout(function () {
             q.pop({ queue: "test4" }, function (err, job) {
               should.not.exist(err);
+              should.not.exist(job);
+            });
+          }, 0);
+
+          setTimeout(function () {
+            q.pop({ queue: "test4" }, function (err, job) {
+              should.not.exist(err);
               should.exist(job);
               job.data.x.should.be.equal(1);
               job.data.y.should.be.equal(2);
               next();
             });
-          }, 13000);
+          }, 250);
         });
       });
     });
   });
-  */
 
   it('should clear the given queue', function (next) {
     this.timeout(0);
@@ -240,306 +246,34 @@ describe("minwq", function() {
     });
   });
 
-  it('should subscribe/unsubscribe to the given queue', function (next) {
-    this.timeout(0);
-    var sub1Id = q.poll.subscribe({
-      channel: 'test4',
-      type: q.poll.TYPE.INTERVAL,
-      value: 3,
-      handler: function (payload, next) { next(); },
-      args: [should]
-    });
+  it("should open a stream", function(next) {
+    var st = q.stream({ queue: "test-stream" });
+    var j = 0;
 
-    var sub2Id = q.poll.subscribe({
-      channel: 'test5',
-      type: q.poll.TYPE.LINEAR,
-      value: 5,
-      handler: function (payload, next) { next(); },
-      args: [should]
-    });
+    var dest = new stream.Writable({ objectMode: true });
 
-    var subscription = q.poll.get(sub1Id);
-    should.exist(subscription);
-    subscription.channel.should.be.equal('test4');
-    subscription.type.should.be.equal(q.poll.TYPE.INTERVAL);
-    subscription.value.should.be.equal(3);
+    dest._write = function(job, _, cont) {
+      job.remove(function (err, data) {
+        if (err) return next(err);
+        job.data.should.be.equal(j);
+        j++;
+        cont();
 
-    subscription = q.poll.get(sub2Id);
-    should.exist(subscription);
-    subscription.channel.should.be.equal('test5');
-    subscription.type.should.be.equal(q.poll.TYPE.LINEAR);
-    subscription.value.should.be.equal(5);
-
-    // Unsubscription
-    q.poll.unsubscribe(sub1Id);
-    subscription = q.poll.get('test4', sub1Id);
-    should.not.exist(subscription);
-
-    q.poll.unsubscribe(sub2Id);
-    subscription = q.poll.get('test5', sub2Id);
-    should.not.exist(subscription);
-
-    next();
-  });
-
-  it('should start the subscription to the given queue with interval algorithm', function (next) {
-    this.timeout(0);
-    var callCount = 0;
-    var subscriptionId = null;
-
-    var consumer = function (data, should, next) {
-      callCount++;
-
-      if (callCount === 1) {
-        data.x.should.be.equal(1);
-        data.y.should.be.equal(2);
-      }
-
-      if (callCount === 2) {
-        data.x.should.be.equal(3);
-        data.y.should.be.equal(4);
-      }
-
-      next();
-    }
-
-    var done = function () {
-      q.poll.unsubscribe(subscriptionId);
-      next();
-    }
-
-    subscriptionId = q.poll.subscribe({
-      channel: 'test4',
-      type: q.poll.TYPE.INTERVAL,
-      value: 3,
-      handler: consumer,
-      done: done,
-      args: [should]
-    });
-
-    q.push({ queue: "test4", data: { x: 1, y: 2 } }, function (err, job) {
-      should.not.exist(err);
-      should.exist(job);
-
-      q.push({ queue: "test4", data: { x: 3, y: 4 } }, function (err, job) {
-        should.not.exist(err);
-        should.exist(job);
-
-        q.poll.start(subscriptionId, function (err) {
-          should.not.exist(err);
-        });
-      });
-    });
-  });
-
-  it('should stop subscription to the given queue with interval algorithm', function (next) {
-    this.timeout(0);
-    var callCount = 0;
-    var queueName = 'test5';
-
-    var consumer = function (data, should, q, next) {
-      callCount++;
-
-      if (callCount === 1) {
-        data.x.should.be.equal(1);
-        data.y.should.be.equal(2);
-        q.poll.stop(queueName);
-      }
-
-      if (callCount === 2) {
-        data.x.should.be.equal(3);
-        data.y.should.be.equal(4);
-      }
-
-      next();
-    }
-
-    var sId = q.poll.subscribe({
-      channel: queueName,
-      type: q.poll.TYPE.INTERVAL,
-      value: 3,
-      handler: consumer,
-      args: [should, q]
-    });
-
-    q.push({ queue: queueName, data: { x: 1, y: 2 } }, function (err, job) {
-      should.not.exist(err);
-      should.exist(job);
-
-      q.push({ queue: queueName, data: { x: 3, y: 4 } }, function (err, job) {
-        should.not.exist(err);
-        should.exist(job);
-
-        q.poll.start(sId, function (err) {
-          should.not.exist(err);
-        });
-
-        setTimeout(function () {
-          callCount.should.be.equal(1);
+        if (j == 3)
           next();
-        }, 5000);
       });
-    });
-  });
-
-  it('should start the subscription to the given queue with linear algorithm', function (next) {
-    this.timeout(0);
-    var callCount = 0;
-    var subscriptionId = null;
-
-    var consumer = function (data, should, next) {
-      callCount++;
-
-      if (callCount === 1) {
-        data.x.should.be.equal(1);
-        data.y.should.be.equal(2);
-      }
-
-      if (callCount === 2) {
-        data.x.should.be.equal(3);
-        data.y.should.be.equal(4);
-      }
-
-      next();
     }
 
-    var done = function () {
-      q.poll.unsubscribe(subscriptionId);
-      next();
-    }
+    st.pipe(dest);
 
-    subscriptionId = q.poll.subscribe({
-      channel: 'test4',
-      type: q.poll.TYPE.LINEAR,
-      value: 3,
-      handler: consumer,
-      done: done,
-      args: [should]
-    });
-
-    q.push({ queue: "test4", data: { x: 1, y: 2 } }, function (err, job) {
+    q.push({queue: 'test-stream', data: 0}, function (err, data) {
       should.not.exist(err);
-      should.exist(job);
-
-      q.push({ queue: "test4", data: { x: 3, y: 4 } }, function (err, job) {
+      q.push({queue: 'test-stream', data: 1}, function (err, data) {
         should.not.exist(err);
-        should.exist(job);
-
-        q.poll.start(subscriptionId, function (err) {
+        q.push({queue: 'test-stream', data: 2}, function (err, data) {
           should.not.exist(err);
-        });
-      });
-    });
-  });
-
-  it('should stop subscription to the given queue with linear algorithm', function (next) {
-    this.timeout(0);
-    var callCount = 0;
-    var queueName = 'test6';
-
-    var consumer = function (data, should, q, next) {
-      callCount++;
-
-      if (callCount === 1) {
-        data.x.should.be.equal(1);
-        data.y.should.be.equal(2);
-        q.poll.stop(queueName);
-      }
-
-      if (callCount === 2) {
-        data.x.should.be.equal(3);
-        data.y.should.be.equal(4);
-      }
-
-      next();
-    }
-
-    var sId = q.poll.subscribe({
-      channel: queueName,
-      type: q.poll.TYPE.LINEAR,
-      value: 3,
-      handler: consumer,
-      args: [should, q]
-    });
-
-    q.push({ queue: queueName, data: { x: 1, y: 2 } }, function (err, job) {
-      should.not.exist(err);
-      should.exist(job);
-
-      q.push({ queue: queueName, data: { x: 3, y: 4 } }, function (err, job) {
-        should.not.exist(err);
-        should.exist(job);
-
-        q.poll.start(sId, function (err) {
-          should.not.exist(err);
-        });
-
-        setTimeout(function () {
-          callCount.should.be.equal(1);
-          next();
-        }, 5000);
-      });
-    });
-  });
-
-  it('should make subscription to the given queue with multiple consumer', function (next) {
-    this.timeout(0);
-    var queueName = 'test2';
-    var sId1 = null;
-    var sId2 = null;
-
-    var consumer1 = function (data, should, q, next) {
-      data.x.should.be.equal(1);
-      data.y.should.be.equal(2);
-      next();
-    }
-
-    var consumer2 = function (data, should, q, next) {
-      data.x.should.be.equal(3);
-      data.y.should.be.equal(4);
-      next();
-    }
-
-    var done = function () {
-      q.poll.unsubscribe(sId1);
-      q.poll.unsubscribe(sId2);
-      next();
-    }
-
-    sId1 = q.poll.subscribe({
-      channel: queueName,
-      type: q.poll.TYPE.INTERVAL,
-      value: 3,
-      handler: consumer1,
-      done: done,
-      args: [should, q]
-    });
-
-    sId2 = q.poll.subscribe({
-      channel: queueName,
-      type: q.poll.TYPE.INTERVAL,
-      value: 4,
-      handler: consumer2,
-      done: done,
-      args: [should, q]
-    });
-
-    q.push({ queue: queueName, data: { x: 1, y: 2 } }, function (err, job) {
-      should.not.exist(err);
-      should.exist(job);
-
-      q.push({ queue: queueName, data: { x: 3, y: 4 } }, function (err, job) {
-        should.not.exist(err);
-        should.exist(job);
-
-        q.poll.start(sId1, function (err) {
-          should.not.exist(err);
-        });
-
-        q.poll.start(sId2, function (err) {
-          should.not.exist(err);
-        });
-      });
-    });
+        })
+      })
+    })
   });
 });
