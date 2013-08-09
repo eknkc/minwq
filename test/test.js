@@ -5,14 +5,8 @@ var mwq = require("../")
   , stream = require("stream")
 
 describe("minwq", function() {
-  var redisSettings = {
-    port: '6379',
-    host: '127.0.0.1'
-  };
-  var redisClient = redis.createClient(redisSettings.port, redisSettings.host);
   var q = new mwq({
-    prefix: "myapp",
-    client: redisClient
+    prefix: "myapp"
   });
 
   var testQueues = ['test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'prioritytest'];
@@ -27,44 +21,6 @@ describe("minwq", function() {
     this.timeout(0);
     q.options.prefix.should.be.equal('myapp');
     next();
-  });
-
-  it('should close the redis connection safely', function (next) {
-    this.timeout(0);
-    q.close();
-    should.not.exist(q.options.client);
-    redisClient = redis.createClient(redisSettings.port, redisSettings.host);
-    q.options.client = redisClient;
-    next();
-  });
-
-  it('should not push without redis connection', function (next) {
-    this.timeout(0);
-    q.close();
-    q.push({ queue: "test1", data: { x: 1, y: 2 } }, function (err, job) {
-      should.exist(err);
-      should.not.exist(job);
-      should.equal(err.message, 'Redis not specified.');
-      redisClient = redis.createClient(redisSettings.port, redisSettings.host);
-      q.options.client = redisClient;
-      next();
-    });
-  });
-
-  it('should not pop without redis connection', function (next) {
-    this.timeout(0);
-    q.push({ queue: "test1", data: { x: 1, y: 2 } }, function (err, job) {
-      should.not.exist(err);
-
-      q.close();
-      q.pop({ queue: "test1"}, function (err, job) {
-        should.exist(err);
-        should.equal(err.message, 'Redis not specified.');
-        redisClient = redis.createClient(redisSettings.port, redisSettings.host);
-        q.options.client = redisClient;
-        next();
-      });
-    });
   });
 
   it("should push a job correctly", function (next) {
@@ -271,6 +227,33 @@ describe("minwq", function() {
       q.push({queue: 'test-stream', data: 1}, function (err, data) {
         should.not.exist(err);
         q.push({queue: 'test-stream', data: 2}, function (err, data) {
+          should.not.exist(err);
+        })
+      })
+    })
+  });
+
+  it("should create a handler", function(next) {
+    var st = q.stream({ queue: "test-stream-handlers" });
+    var j = 0;
+
+    st.pipe(q.handler(function(job, cont) {
+      job.remove(function (err, data) {
+        if (err) return next(err);
+        job.data.should.be.equal(j);
+        j++;
+        cont();
+
+        if (j == 3)
+          next();
+      });
+    }));
+
+    q.push({queue: 'test-stream-handlers', data: 0}, function (err, data) {
+      should.not.exist(err);
+      q.push({queue: 'test-stream-handlers', data: 1}, function (err, data) {
+        should.not.exist(err);
+        q.push({queue: 'test-stream-handlers', data: 2}, function (err, data) {
           should.not.exist(err);
         })
       })
