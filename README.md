@@ -48,14 +48,15 @@ store.push({
 
 * `ttl` [optional] - Job retry delay (in milliseconds).
 
-If a job takes more than `ttr` seconds to complete, it will be requeued.
-No TTR means the hob will be removed from queue immediately when the pop function gets called.
+If a job takes more than `ttl` milliseconds to complete, it will be requeued.
+No TTL means the hob will be removed from queue immediately when the pop function gets called.
 
 ***
 
 ```
 store.pop({
-	queue: "email"
+	queue: "email",
+	ttl: 10000
 }, function(err, job) {
 	// job.data contains the job payload
 	console.log(job.data);
