@@ -1,15 +1,9 @@
-local queue = KEYS[1]
-local data = cjson.decode(ARGV[1])
+local set = KEYS[1]
+local hash = KEYS[2]
 
-local llen = redis.call("LLEN", queue)
+local opt = cjson.decode(ARGV[1])
 
-for i=1, llen do
-  local entry = redis.call('LINDEX', queue, i - 1)
-  local item = cmsgpack.unpack(entry)
+redis.call("ZREM", set, opt.id)
+redis.call("HDEL", hash, opt.id)
 
-  if (data["id"] and item["id"] == data["id"]) or (data["unique"] and item["unique"] == data["unique"]) then
-    return redis.call('LREM', queue, 0, entry)
-  end
-end
-
-return 0
+return 1

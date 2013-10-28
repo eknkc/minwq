@@ -1,31 +1,16 @@
-local queue = KEYS[1]
-local data = cjson.decode(ARGV[1])
+local set = KEYS[1]
+local hash = KEYS[2]
+
+local job = cjson.decode(ARGV[1])
 local meta = cjson.decode(ARGV[2])
 
-if data["unique"] then
-  local items = redis.call('LRANGE', queue, 0, -1)
+local score = meta.date
 
-  for i=1, #items do
-    local item = cmsgpack.unpack(items[i])
-    if item["unique"] == data["unique"] then
-      return nil
-    end
-  end
+if job.delay then
+  score = -1 * (meta.date + job.delay)
 end
 
-if data["delay"] then
-  data["delayttl"] = data["delay"] + meta["date"]
-  data["state"] = "delayed"
-else
-  data["state"] = "waiting"
-end
+redis.call("ZADD", set, score, job.id)
+redis.call("HSET", hash, job.id, job.data)
 
-if data["priority"] and data["priority"] > 0 then
-  redis.call("LPUSH", queue, cmsgpack.pack(data))
-else
-  redis.call("RPUSH", queue, cmsgpack.pack(data))
-end
-
-redis.call("PUBLISH", queue, data.id)
-
-return data.id
+return job.id

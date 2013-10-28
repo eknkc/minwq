@@ -24,15 +24,11 @@ Minimalistic Node.JS Work Queue, backed by Redis. (>=2.6.* redis required with L
 
 * `queue` [required] - Name of the queue
 * `data` [required] - Job payload
-* `delay` [optional] - Delay job execution (in seconds)
+* `delay` [optional] - Delay job execution (in milliseconds)
 * `unique` [optional] - If provided, only a single living job can have the unqiue token, additional push requests will fail.
 * `priority` [optional] - Integer, denoting the job priority. Higher gets executed first.
-* `ttr` [optional] - Job retry delay (in seconds).
 * `callback(err, jobid)` - Gets called when the job is created
 * **
-
-If a job takes more than `ttr` seconds to complete, it will be requeued.
-No TTR means the hob will be removed from queue immediately when the pop function gets called.
 
 	store.push({
 		queue: "email",
@@ -43,12 +39,16 @@ No TTR means the hob will be removed from queue immediately when the pop functio
 		},
 		delay: 100,
 		unique: "unqiue token",
-		priority: 1,
-		ttr: 180
 	}, callback);
 
 
 #### Poping - Pop a job from queue
+
+* `ttl` [optional] - Job retry delay (in milliseconds).
+* **
+
+If a job takes more than `ttr` seconds to complete, it will be requeued.
+No TTR means the hob will be removed from queue immediately when the pop function gets called.
 
 	store.pop({
 		queue: "email"

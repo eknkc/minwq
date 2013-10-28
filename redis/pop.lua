@@ -1,35 +1,29 @@
-local queue = KEYS[1]
-local meta = cjson.decode(ARGV[1])
+local set = KEYS[1]
+local hash = KEYS[2]
 
-local llen = redis.call("LLEN", queue)
+local opt = cjson.decode(ARGV[1])
+local meta = cjson.decode(ARGV[2])
 
-local i = 1
-while i <= llen do
-  local data = redis.call("LPOP", queue)
-  local item = cmsgpack.unpack(data)
+local recycled = redis.call("ZRANGEBYSCORE", set, -1 * meta.date, "(0")
 
-  if item["state"] == "waiting" then
-    if item["ttr"] then
-      item["state"] = "delayed"
-      item["delayttl"] = meta["date"] + item["ttr"]
-
-      redis.call("RPUSH", queue, cmsgpack.pack(item))
-    else
-      item["state"] = "active"
-    end
-
-    return cjson.encode(item)
-  elseif item["state"] == "delayed" then
-    if item["delayttl"] < meta["date"] then
-      item["state"] = "waiting"
-      redis.call("LPUSH", queue, cmsgpack.pack(item))
-      i = i - 1
-    else
-      redis.call("RPUSH", queue, cmsgpack.pack(item))
-    end
-  end
-
-  i = i + 1
+for i, key in ipairs(recycled) do
+  redis.call("ZADD", set, meta.date, key)
 end
 
-return nil
+local i, key = next(redis.call("ZRANGEBYSCORE", set, "(0", "+inf", "LIMIT", "0", "1"))
+
+if key == nil then
+  return nil
+end
+
+local data = redis.call("HGET", hash, key)
+
+if opt.ttl then
+  local score = -1 * (meta.date + opt.ttl)
+  redis.call("ZADD", set, score, key)
+else
+  redis.call("ZREM", set, key)
+  redis.call("HDEL", hash, key)
+end
+
+return { key, data }
