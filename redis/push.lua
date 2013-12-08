@@ -10,7 +10,11 @@ if job.delay then
   score = -1 * (meta.date + job.delay)
 end
 
-redis.call("ZADD", set, score, job.id)
-redis.call("HSET", hash, job.id, job.data)
+local curindex = redis.call("ZRANK", set, job.id)
+
+if not curindex then
+  redis.call("ZADD", set, score, job.id)
+  redis.call("HSET", hash, job.id, job.data)
+end
 
 return job.id
