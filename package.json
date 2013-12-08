@@ -1,6 +1,6 @@
 {
   "name": "minwq",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Minimalist work queue backed by Redis",
   "main": "index.js",
   "scripts": {
