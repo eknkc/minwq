@@ -16,7 +16,7 @@ Minimalistic Node.JS Work Queue, backed by Redis. (>=2.6.* redis required with L
 	});
 
 	// If you need to provide custom redis clients (due to authentication or because you just want to), you can override createClient function of store;
-	store.createClient = function() {
+	minwq.prototype.createClient = function() {
 		return redis.createClient(..whatever);
 	}
 
@@ -26,7 +26,7 @@ Minimalistic Node.JS Work Queue, backed by Redis. (>=2.6.* redis required with L
 * `data` [required] - Job payload
 * `delay` [optional] - Delay job execution (in milliseconds)
 * `unique` [optional] - If provided, only a single living job can have the unqiue token, additional push requests will fail.
-* `priority` [optional] - Integer, denoting the job priority. Higher gets executed first.
+* `replace` [optional] - Boolean. If a unique key is provided and a duplicate job is pushed, it is ignored by default. Provide replace: true to replace the older job with new one.
 * `callback(err, jobid)` - Gets called when the job is created
 
 ***

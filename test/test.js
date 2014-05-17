@@ -89,4 +89,46 @@ describe("minwq", function() {
       });
     });
   });
+
+  it("should not replace unique items", function (next) {
+    q.push({ queue: 'testunique1', data: { x: 1 }, unique: 'xx' }, function (err, data) {
+      if (err) throw err;
+
+      q.push({ queue: 'testunique1', data: { x: 2 }, unique: 'xx' }, function (err, data) {
+        if (err) throw err;
+
+        q.pop({ queue: "testunique1" }, function (err, job) {
+          if (err) throw err;
+          job.data.x.should.be.equal(1);
+
+          q.pop({ queue: "testunique1" }, function (err, job) {
+            if (err) throw err;
+            should.not.exist(job);
+            next();
+          });
+        });
+      });
+    });
+  });
+
+  it("should replace unique items when preferred", function (next) {
+    q.push({ queue: 'testunique2', data: { x: 1 }, unique: 'xx' }, function (err, data) {
+      if (err) throw err;
+
+      q.push({ queue: 'testunique2', data: { x: 2 }, unique: 'xx', replace: true }, function (err, data) {
+        if (err) throw err;
+
+        q.pop({ queue: "testunique2" }, function (err, job) {
+          if (err) throw err;
+          job.data.x.should.be.equal(2);
+
+          q.pop({ queue: "testunique2" }, function (err, job) {
+            if (err) throw err;
+            should.not.exist(job);
+            next();
+          });
+        });
+      });
+    });
+  });
 });

@@ -12,7 +12,7 @@ end
 
 local curindex = redis.call("ZRANK", set, job.id)
 
-if not curindex then
+if not curindex or job.replace then
   redis.call("ZADD", set, score, job.id)
   redis.call("HSET", hash, job.id, job.data)
 end
