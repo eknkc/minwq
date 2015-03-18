@@ -1,7 +1,6 @@
 var mwq = require("../")
   , should = require('should')
   , redis = require('redis')
-  , async = require('async')
   , stream = require("stream")
 
 describe("minwq", function() {

@@ -1,6 +1,6 @@
 {
   "name": "minwq",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Minimalist work queue backed by Redis",
   "main": "index.js",
   "scripts": {
@@ -19,9 +19,10 @@
   "author": "Ekin Koc",
   "license": "MIT",
   "dependencies": {
-    "redis": "~0.8.4",
-    "async": "~0.2.9",
     "msgpack-js": "~0.3.0"
+  },
+  "peerDependencies": {
+    "redis": "~0.12.1"
   },
   "devDependencies": {
     "mocha": "~1.11.0",
