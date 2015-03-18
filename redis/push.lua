@@ -1,13 +1,13 @@
 local set = KEYS[1]
 local hash = KEYS[2]
+local date = ARGV[1]
 
-local job = cjson.decode(ARGV[1])
-local meta = cjson.decode(ARGV[2])
+local job = cjson.decode(ARGV[2])
 
-local score = meta.date
+local score = date
 
 if job.delay then
-  score = -1 * (meta.date + job.delay)
+  score = -1 * (date + job.delay)
 end
 
 local curindex = redis.call("ZRANK", set, job.id)
